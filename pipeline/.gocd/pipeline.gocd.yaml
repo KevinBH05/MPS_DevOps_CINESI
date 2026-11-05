@@ -1,0 +1,70 @@
+format_version: 10
+pipelines:
+  net-web-pipeline:
+    group: proyectos-web
+    materials:
+      git-repo:
+        git: https://github.com/tu-usuario/tu-repositorio.git
+        branch: main
+    stages:
+      - build-stage:
+          jobs:
+            compile:
+              tasks:
+                - exec:
+                    command: dotnet
+                    arguments:
+                      - restore
+                - exec:
+                    command: dotnet
+                    arguments:
+                      - build
+                      - --configuration
+                      - Release
+                      - --no-restore
+              artifacts:
+                - build:
+                    source: '**/bin/Release/'
+                    destination: bin-output
+
+      - test-stage:
+          jobs:
+            run-xunit:
+              tasks:
+                - exec:
+                    command: dotnet
+                    arguments:
+                      - test
+                      - --no-build
+                      - --configuration
+                      - Release
+                      - --logger
+                      - "trx;LogFileName=test-results.trx"
+
+      - docker-stage:
+          jobs:
+            build-image:
+              tasks:
+                - exec:
+                    command: docker
+                    arguments:
+                      - build
+                      - -t
+                      - cinesi-web:latest
+                      - .
+
+      - deploy-stage:
+          jobs:
+            deploy-web:
+              tasks:
+                - exec:
+                    command: sh
+                    arguments:
+                      - -c
+                      - |
+                        echo "Parando contenedor anterior..."
+                        docker stop cinesi-app || true
+                        docker rm cinesi-app || true
+                        
+                        echo "Lanzando nueva versión..."
+                        docker run -d --name cinesi-app -p 8080:8080 cinesi-web:latest

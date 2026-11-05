@@ -1,0 +1,18 @@
+services:
+  gocd-server:
+    image: gocd/gocd-server:v26.1.0
+    ports:
+      - "8153:8153"
+      - "8154:8154"
+    environment:
+      - AGENT_AUTO_REGISTER_KEY=mi-clave-secreta
+  
+  gocd-agent:
+    image: gocd/gocd-agent-docker-dind:v26.1.0
+    environment:
+      - GO_SERVER_URL=http://gocd-server:8153/go
+      - AGENT_AUTO_REGISTER_KEY=mi-clave-secreta
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - gocd-server
