@@ -1,15 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <cruise xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="cruise-config.xsd" schemaVersion="139">
-  <server agentAutoRegisterKey="mi-clave-secreta" serverId="fdef4281-ea3a-4fa1-9936-75782e882f6f">
+  <server agentAutoRegisterKey="CINESI-AGENT-KEY" serverId="fdef4281-ea3a-4fa1-9936-75782e882f6f">
     <artifacts>
       <artifactsDir>artifacts</artifactsDir>
     </artifacts>
   </server>
-
   <config-repos>
     <config-repo pluginId="yaml.config.plugin" id="repo-pipelines">
-        <git url="https://github.com/KevinBH05/MPS_DevOps_CINESI.git" branch="main" />
+      <git url="https://github.com/KevinBH05/MPS_DevOps_CINESI.git" branch="main" />
+      <rules>
+        <allow action="refer" type="pipeline_group">defaultGroup</allow>
+      </rules>
     </config-repo>
   </config-repos>
 </cruise>
-EOF

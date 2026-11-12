@@ -1,7 +1,7 @@
 format_version: 10
 pipelines:
   net-web-pipeline:
-    group: proyectos-web
+    group: defaultGroup
     materials:
       git-repo:
         git: https://github.com/KevinBH05/MPS_DevOps_CINESI.git
