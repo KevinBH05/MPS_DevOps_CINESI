@@ -12,12 +12,13 @@ pipelines:
             compile:
               tasks:
                 - exec:
+                    working_directory: pipeline
                     command: gradle
                     arguments:
                       - packageBuild
               artifacts:
                 - build:
-                    source: build-artifacts.tar.gz
+                    source: pipeline/build-artifacts.tar.gz
 
       - test-stage:
           jobs:
@@ -34,12 +35,13 @@ pipelines:
                       - -xzf
                       - build-artifacts.tar.gz
                 - exec:
+                    working_directory: pipeline
                     command: gradle
                     arguments:
                       - test
               artifacts:
                 - test:
-                    source: '**/TestResults/*.trx'
+                    source: pipeline/test-results/test/*.xml
                     destination: test-reports
 
       - docker-stage:

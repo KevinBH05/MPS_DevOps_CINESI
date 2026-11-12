@@ -10,8 +10,12 @@ services:
       - gocd-data:/godata
 
   gocd-agent:
-    image: gocd/gocd-agent-docker-dind:v26.1.0
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
     privileged: true
+    ports:
+      - "8080:8080"
     environment:
       - GO_SERVER_URL=http://gocd-server:8153/go
       - AGENT_AUTO_REGISTER_KEY=CINESI-AGENT-KEY
