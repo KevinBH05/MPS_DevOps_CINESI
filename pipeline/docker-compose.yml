@@ -1,11 +1,20 @@
 services:
-  gocd-server:
+gocd-server:
     image: gocd/gocd-server:v26.1.0
     ports:
       - "8153:8153"
       - "8154:8154"
     environment:
       - AGENT_AUTO_REGISTER_KEY=mi-clave-secreta
+    command: >
+      bash -c "
+        mkdir -p /godata/plugins/external &&
+        if [ ! -f /godata/plugins/external/yaml-config-plugin.jar ]; then
+          echo 'Descargando plugin YAML para GoCD...' &&
+          curl -sL -o /godata/plugins/external/yaml-config-plugin.jar https://github.com/gocd-contrib/yaml-config-plugin/releases/latest/download/yaml-config-plugin.jar;
+        fi &&
+        /docker-entrypoint.sh
+      "
   
   gocd-agent:
     image: gocd/gocd-agent-docker-dind:v26.1.0

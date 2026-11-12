@@ -4,7 +4,7 @@ pipelines:
     group: proyectos-web
     materials:
       git-repo:
-        git: https://github.com/tu-usuario/tu-repositorio.git
+        git: https://github.com/KevinBH05/MPS_DevOps_CINESI.git
         branch: main
     stages:
       - build-stage:
