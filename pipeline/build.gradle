@@ -1,0 +1,22 @@
+plugins {
+    id 'base'
+}
+
+tasks.register('restore', Exec) {
+    commandLine 'dotnet', 'restore'
+}
+
+tasks.register('compile', Exec) {
+    dependsOn 'restore'
+    // Compila toda la solución (aplicación + proyectos de test xUnit)
+    commandLine 'dotnet', 'build', '--configuration', 'Release', '--no-restore'
+}
+
+tasks.register('runTests', Exec) {
+    // --no-build obliga a usar los binarios que ya vienen en el artefacto
+    commandLine 'dotnet', 'test', '--configuration', 'Release', '--no-build', '--logger', 'trx;LogFileName=test-results.trx'
+}
+
+tasks.named('build') {
+    dependsOn 'compile'
+}

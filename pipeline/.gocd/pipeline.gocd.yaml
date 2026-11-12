@@ -12,34 +12,35 @@ pipelines:
             compile:
               tasks:
                 - exec:
-                    command: dotnet
+                    command: gradle
                     arguments:
-                      - restore
-                - exec:
-                    command: dotnet
-                    arguments:
-                      - build
-                      - --configuration
-                      - Release
-                      - --no-restore
+                      - packageBuild
               artifacts:
                 - build:
-                    source: '**/bin/Release/'
-                    destination: bin-output
+                    source: build-artifacts.tar.gz
 
       - test-stage:
           jobs:
             run-xunit:
               tasks:
+                - fetch:
+                    stage: build-stage
+                    job: compile
+                    source: build-artifacts.tar.gz
+                    is_file: true
                 - exec:
-                    command: dotnet
+                    command: tar
+                    arguments:
+                      - -xzf
+                      - build-artifacts.tar.gz
+                - exec:
+                    command: gradle
                     arguments:
                       - test
-                      - --no-build
-                      - --configuration
-                      - Release
-                      - --logger
-                      - "trx;LogFileName=test-results.trx"
+              artifacts:
+                - test:
+                    source: '**/TestResults/*.trx'
+                    destination: test-reports
 
       - docker-stage:
           jobs:
@@ -65,6 +66,6 @@ pipelines:
                         echo "Parando contenedor anterior..."
                         docker stop cinesi-app || true
                         docker rm cinesi-app || true
-                        
+
                         echo "Lanzando nueva versión..."
                         docker run -d --name cinesi-app -p 8080:8080 cinesi-web:latest
