@@ -4,6 +4,7 @@ public class Pelicula
 {
     public int Id { get; set; }
     public string Titulo { get; set; } = string.Empty;
-    public string Horario { get; set; } = string.Empty;
-    public decimal Precio { get; set; }
+    public int DuracionMin { get; set; }
+    public string Genero { get; set; } = string.Empty;
+    public int EdadMinima {get; set; }
 }
