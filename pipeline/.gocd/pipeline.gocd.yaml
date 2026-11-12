@@ -12,11 +12,14 @@ pipelines:
             build-image:
               tasks:
                 - exec:
+                    working_directory: pipeline
                     command: docker
                     arguments:
                       - build
                       - -t
                       - cinesi-web:latest
+                      - -f
+                      - pipeline/Dockerfile
                       - .
 
       - deploy-stage:
