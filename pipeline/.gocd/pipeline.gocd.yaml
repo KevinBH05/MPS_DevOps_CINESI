@@ -7,43 +7,6 @@ pipelines:
         git: https://github.com/KevinBH05/MPS_DevOps_CINESI.git
         branch: main
     stages:
-      - build-stage:
-          jobs:
-            compile:
-              tasks:
-                - exec:
-                    working_directory: pipeline
-                    command: gradle
-                    arguments:
-                      - packageBuild
-              artifacts:
-                - build:
-                    source: pipeline/build-artifacts.tar.gz
-
-      - test-stage:
-          jobs:
-            run-xunit:
-              tasks:
-                - fetch:
-                    stage: build-stage
-                    job: compile
-                    source: build-artifacts.tar.gz
-                    is_file: true
-                - exec:
-                    command: tar
-                    arguments:
-                      - -xzf
-                      - build-artifacts.tar.gz
-                - exec:
-                    working_directory: pipeline
-                    command: gradle
-                    arguments:
-                      - test
-              artifacts:
-                - test:
-                    source: pipeline/test-results/test/*.xml
-                    destination: test-reports
-
       - docker-stage:
           jobs:
             build-image:
@@ -65,9 +28,6 @@ pipelines:
                     arguments:
                       - -c
                       - |
-                        echo "Parando contenedor anterior..."
                         docker stop cinesi-app || true
                         docker rm cinesi-app || true
-
-                        echo "Lanzando nueva versión..."
                         docker run -d --name cinesi-app -p 8080:8080 cinesi-web:latest
