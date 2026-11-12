@@ -7,4 +7,5 @@ public class Pelicula
     public int DuracionMin { get; set; }
     public string Genero { get; set; } = string.Empty;
     public int EdadMinima {get; set; }
+    public string ImagenUrl {get; set;} = string.Empty; 
 }

@@ -2,151 +2,145 @@
 @rendermode InteractiveServer
 @using CineFrontend.Models
 
-<PageTitle>Cine DevOps - Compra de Entradas</PageTitle>
+<PageTitle>CinESI - Cartelera</PageTitle>
 
-<div style="max-width: 900px; margin: 30px auto; font-family: Arial, sans-serif;">
-    <h1>🎬 Cine DevOps - Cartelera y Sesiones</h1>
-    <p>Selecciona una sesión para elegir tus butacas:</p>
+<div class="fondo-cine">
+    <div class="contenedor-principal">
+        <h1 class="titulo-principal">🎬 CinESI - Cartelera y Sesiones</h1>
+        <p>Selecciona una sesión para elegir tus butacas:</p>
 
-    <!-- 1. LISTADO DE SESIONES (Película + Sala + Horario + Formato) -->
-    <div style="display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 30px;">
-        @foreach (var sesion in sesionesDisponibles)
-        {
-            var esSeleccionada = sesionSeleccionada?.Id == sesion.Id;
-            <div style="border: 2px solid @(esSeleccionada ? "#2196F3" : "#ccc"); 
-                        padding: 15px; border-radius: 8px; width: 260px;
-                        background-color: @(esSeleccionada ? "#e3f2fd" : "white");">
-                <h3 style="margin-top: 0;">@sesion.Pelicula.Titulo</h3>
-                <p style="font-size: 0.9em; color: #555;">
-                    🎭 @sesion.Pelicula.Genero | ⏱️ @sesion.Pelicula.DuracionMin min | 🔞 +@sesion.Pelicula.EdadMinima
-                </p>
-                <hr style="border: 0; border-top: 1px solid #eee;" />
-                <p>🏛️ <strong>@sesion.NombreSala</strong> (@sesion.Formato)</p>
-                <p>🕒 Hora: <strong>@sesion.Inicio.ToString("HH:mm")</strong></p>
-                <p>💶 Tarifa base: <strong>@sesion.TarifaBase €</strong></p>
-                
-                <button @onclick="() => SeleccionarSesion(sesion)" 
-                        style="width: 100%; padding: 8px; cursor: pointer; background: #2196F3; color: white; border: none; border-radius: 4px;">
-                    Seleccionar Sesión
-                </button>
-            </div>
-        }
-    </div>
-
-    <!-- 2. MAPA DE BUTACAS Y DESCUENTOS -->
-    @if (sesionSeleccionada != null && !compraConfirmada)
-    {
-        <div style="border: 2px solid #2196F3; padding: 20px; border-radius: 8px; background: #f9f9f9;">
-            <h2>Butacas para @sesionSeleccionada.Pelicula.Titulo (@sesionSeleccionada.Inicio.ToString("HH:mm"))</h2>
-            
-            <!-- Leyenda visual -->
-            <div style="display: flex; gap: 15px; font-size: 0.9em; margin-bottom: 15px;">
-                <span>🟩 Libre</span>
-                <span>🟨 Seleccionada (Bloqueada)</span>
-                <span>🟥 Vendida</span>
-                <span>♿ Movilidad reducida</span>
-            </div>
-
-            <!-- Pantalla del cine -->
-            <div style="background: #333; color: white; text-align: center; padding: 6px; margin-bottom: 20px; border-radius: 4px; letter-spacing: 4px;">
-                PANTALLA
-            </div>
-
-            <!-- Cuadrícula de asientos -->
-            <div style="display: flex; flex-direction: column; gap: 10px; align-items: center; margin-bottom: 25px;">
-                @foreach (var fila in mapaAsientos.GroupBy(a => a.Fila))
-                {
-                    <div style="display: flex; gap: 8px; align-items: center;">
-                        <strong style="width: 20px;">@fila.Key</strong>
-                        @foreach (var asiento in fila)
-                        {
-                            <button @onclick="() => AlternarAsiento(asiento)"
-                                    disabled="@(asiento.Estado == EstadoAsiento.Vendido)"
-                                    style="width: 52px; height: 42px; border-radius: 6px; border: 1px solid #666; font-weight: bold;
-                                           cursor: @(asiento.Estado == EstadoAsiento.Vendido ? "not-allowed" : "pointer");
-                                           background-color: @ObtenerColorAsiento(asiento);">
-                                @asiento.Etiqueta @(asiento.Tipo == TipoAsiento.Minusvalido ? "♿" : "")
-                            </button>
-                        }
-                    </div>
-                }
-            </div>
-
-            <!-- Resumen de entradas seleccionadas + DescuentoStrategy por entrada -->
-            @if (entradasSeleccionadas.Any())
+        <!-- 1. LISTADO DE SESIONES -->
+        <div class="grid-sesiones">
+            @foreach (var sesion in sesionesDisponibles)
             {
-                <h3>Tus entradas seleccionadas:</h3>
-                <ul style="list-style: none; padding: 0;">
-                    @foreach (var item in entradasSeleccionadas)
+                var esSeleccionada = sesionSeleccionada?.Id == sesion.Id;
+                <div class="tarjeta-sesion @(esSeleccionada ? "seleccionada" : "")">
+                    @if (!string.IsNullOrEmpty(sesion.Pelicula.ImagenUrl))
                     {
-                        <li style="display: flex; justify-content: space-between; align-items: center; background: white; padding: 10px; margin-bottom: 8px; border: 1px solid #ddd; border-radius: 5px;">
-                            <span>
-                                🎟️ Butaca <strong>@item.Asiento.Etiqueta</strong> 
-                                (@(item.Asiento.Tipo == TipoAsiento.Minusvalido ? "Movilidad Reducida" : "Estándar"))
-                            </span>
-                            
-                            <div>
-                                <label>Tarifa: </label>
-                                <select @bind="item.Descuento" style="padding: 4px;">
-                                    <option value="@TipoDescuento.SinDescuento">Normal (0% dto.)</option>
-                                    <option value="@TipoDescuento.DescuentoEstudiante">Estudiante (-20%)</option>
-                                    <option value="@TipoDescuento.DescuentoSenior">Senior (-30%)</option>
-                                    <option value="@TipoDescuento.DescuentoDiaEspectador">Día del Espectador (-25%)</option>
-                                </select>
-                                <strong style="margin-left: 15px;">@CalcularPrecioEntrada(item).ToString("0.00") €</strong>
-                            </div>
-                        </li>
+                        <img src="@sesion.Pelicula.ImagenUrl" alt="@sesion.Pelicula.Titulo" class="poster-pelicula" />
                     }
-                </ul>
-
-                <!-- [AQUÍ IRÁ EN EL FUTURO LA OPCIÓN DE PALOMITAS] -->
-
-                <p style="font-size: 1.3em; text-align: right; margin-top: 15px;">
-                    Total a pagar: <strong>@CalcularTotalCompra().ToString("0.00") €</strong>
-                </p>
-
-                <div style="text-align: right;">
-                    <button @onclick="ConfirmarCompra" 
-                            style="background: #4CAF50; color: white; border: none; padding: 12px 24px; font-size: 1.05em; cursor: pointer; border-radius: 5px;">
-                        Confirmar Compra (@entradasSeleccionadas.Count entradas)
+                    <h3>@sesion.Pelicula.Titulo</h3>
+                    <p class="meta-pelicula">
+                        🎭 @sesion.Pelicula.Genero | ⏱️ @sesion.Pelicula.DuracionMin min | 🔞 +@sesion.Pelicula.EdadMinima
+                    </p>
+                    <hr style="border: 0; border-top: 1px solid rgba(244, 255, 0, 0.25);" />
+                    <p>🏛️ <strong>@sesion.NombreSala</strong> (@sesion.Formato)</p>
+                    <p>🕒 Hora: <strong>@sesion.Inicio.ToString("HH:mm")</strong></p>
+                    <p>💶 Tarifa base: <strong>@sesion.TarifaBase €</strong></p>
+                    
+                    <button class="boton-elegir" @onclick="() => SeleccionarSesion(sesion)">
+                        Seleccionar Sesión
                     </button>
                 </div>
             }
         </div>
-    }
 
-    <!-- 3. TICKET DE CONFIRMACIÓN -->
-    @if (compraConfirmada && sesionSeleccionada != null)
-    {
-        <div style="border: 2px solid #4CAF50; padding: 20px; border-radius: 8px; background: #e8f5e9; margin-top: 20px;">
-            <h2>✅ ¡Compra confirmada! Tus tickets están listos</h2>
-            <p><strong>Película:</strong> @sesionSeleccionada.Pelicula.Titulo (@sesionSeleccionada.Formato)</p>
-            <p><strong>Sala y Hora:</strong> @sesionSeleccionada.NombreSala - @sesionSeleccionada.Inicio.ToString("HH:mm")</p>
-            <p><strong>Butacas:</strong> @string.Join(", ", entradasSeleccionadas.Select(e => e.Asiento.Etiqueta))</p>
-            <p style="font-size: 1.2em;"><strong>Total pagado:</strong> @CalcularTotalCompra().ToString("0.00") €</p>
+        <!-- 2. MAPA DE BUTACAS Y DESCUENTOS -->
+        @if (sesionSeleccionada != null && !compraConfirmada)
+        {
+            <div class="panel-neon">
+                <h2>Butacas para @sesionSeleccionada.Pelicula.Titulo (@sesionSeleccionada.Inicio.ToString("HH:mm"))</h2>
+                
+                <div style="display: flex; gap: 15px; font-size: 0.9em; margin-bottom: 15px; font-weight: bold;">
+                    <span>🟩 Libre</span>
+                    <span>🟦 Seleccionada</span>
+                    <span>🟥 Vendida</span>
+                    <span>♿ Movilidad reducida</span>
+                </div>
 
-            <button @onclick="Reiniciar" style="margin-top: 10px; padding: 8px 15px; cursor: pointer;">
-                Volver a la cartelera
-            </button>
-        </div>
-    }
+                <div class="pantalla-cine">PANTALLA</div>
+
+                <div style="display: flex; flex-direction: column; gap: 10px; align-items: center; margin-bottom: 25px;">
+                    @foreach (var fila in mapaAsientos.GroupBy(a => a.Fila))
+                    {
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <strong style="width: 20px;">@fila.Key</strong>
+                            @foreach (var asiento in fila)
+                            {
+                                <button @onclick="() => AlternarAsiento(asiento)"
+                                        disabled="@(asiento.Estado == EstadoAsiento.Vendido)"
+                                        style="width: 54px; height: 42px; border-radius: 6px; border: 2px solid #2b0f4c; font-weight: bold;
+                                               cursor: @(asiento.Estado == EstadoAsiento.Vendido ? "not-allowed" : "pointer");
+                                               background-color: @ObtenerColorAsiento(asiento); color: #1a0633;">
+                                    @asiento.Etiqueta @(asiento.Tipo == TipoAsiento.Minusvalido ? "♿" : "")
+                                </button>
+                            }
+                        </div>
+                    }
+                </div>
+
+                @if (entradasSeleccionadas.Any())
+                {
+                    <h3>Tus entradas seleccionadas:</h3>
+                    <ul style="list-style: none; padding: 0;">
+                        @foreach (var item in entradasSeleccionadas)
+                        {
+                            <li class="item-entrada">
+                                <span>
+                                    🎟️ Butaca <strong>@item.Asiento.Etiqueta</strong> 
+                                    (@(item.Asiento.Tipo == TipoAsiento.Minusvalido ? "Movilidad Reducida" : "Estándar"))
+                                </span>
+                                
+                                <div>
+                                    <label>Tarifa: </label>
+                                    <select @bind="item.Descuento" style="padding: 5px; border-radius: 4px; background-color: #160926; color: #f4ff00; border: 1px solid #f4ff00;">
+                                        <option value="@TipoDescuento.SinDescuento">Normal (0% dto.)</option>
+                                        <option value="@TipoDescuento.DescuentoEstudiante">Estudiante (-20%)</option>
+                                        <option value="@TipoDescuento.DescuentoSenior">Senior (-30%)</option>
+                                        <option value="@TipoDescuento.DescuentoDiaEspectador">Día del Espectador (-25%)</option>
+                                    </select>
+                                    <strong style="margin-left: 15px;">@CalcularPrecioEntrada(item).ToString("0.00") €</strong>
+                                </div>
+                            </li>
+                        }
+                    </ul>
+
+                    <!-- [AQUÍ IRÁ EN EL FUTURO LA OPCIÓN DE PALOMITAS] -->
+
+                    <p style="font-size: 1.3em; text-align: right; margin-top: 15px;">
+                        Total a pagar: <strong>@CalcularTotalCompra().ToString("0.00") €</strong>
+                    </p>
+
+                    <div style="text-align: right;">
+                        <button class="boton-confirmar" @onclick="ConfirmarCompra">
+                            Confirmar Compra (@entradasSeleccionadas.Count entradas)
+                        </button>
+                    </div>
+                }
+            </div>
+        }
+
+        <!-- 3. TICKET DE CONFIRMACIÓN -->
+        @if (compraConfirmada && sesionSeleccionada != null)
+        {
+            <div class="panel-neon">
+                <h2>✅ ¡Compra confirmada! Tus tickets están listos</h2>
+                <p><strong>Película:</strong> @sesionSeleccionada.Pelicula.Titulo (@sesionSeleccionada.Formato)</p>
+                <p><strong>Sala y Hora:</strong> @sesionSeleccionada.NombreSala - @sesionSeleccionada.Inicio.ToString("HH:mm")</p>
+                <p><strong>Butacas:</strong> @string.Join(", ", entradasSeleccionadas.Select(e => e.Asiento.Etiqueta))</p>
+                <p style="font-size: 1.2em;"><strong>Total pagado:</strong> @CalcularTotalCompra().ToString("0.00") €</p>
+
+                <button class="boton-confirmar" @onclick="Reiniciar" style="margin-top: 10px;">
+                    Volver a la cartelera
+                </button>
+            </div>
+        }
+    </div>
 </div>
 
 @code {
-    // Clase auxiliar interna para asociar cada asiento bloqueado con su descuento elegido
     private class EntradaBorrador
     {
         public AsientoSesion Asiento { get; set; } = new();
         public TipoDescuento Descuento { get; set; } = TipoDescuento.SinDescuento;
     }
 
-    // Datos simulados (Mock) alineados con el UML
     private List<Sesion> sesionesDisponibles = new()
     {
         new Sesion
         {
             Id = 1,
-            Pelicula = new Pelicula { Id = 1, Titulo = "Dune: Parte Dos", DuracionMin = 166, Genero = "Ciencia Ficción", EdadMinima = 12 },
+            Pelicula = new Pelicula { Id = 1, Titulo = "Avengers: Doomsday", DuracionMin = 165, Genero = "Ciencia Ficción", EdadMinima = 12, ImagenUrl = "https://lumiere-a.akamaihd.net/v1/images/captura_de_pantalla_2026-07-20_a_la_s_5_65bfa234.png?region=0,0,1144,1628" , },
             NombreSala = "Sala Grande 1",
             Inicio = DateTime.Today.AddHours(18),
             TarifaBase = 10.00m,
@@ -155,8 +149,17 @@
         new Sesion
         {
             Id = 2,
-            Pelicula = new Pelicula { Id = 2, Titulo = "Oppenheimer", DuracionMin = 180, Genero = "Drama", EdadMinima = 16 },
+            Pelicula = new Pelicula { Id = 2, Titulo = "Pesadilla antes de Navidad", DuracionMin = 76, Genero = "Fantasía", EdadMinima = 3, ImagenUrl = "https://m.media-amazon.com/images/I/61FdpB2M6PL._AC_UF894,1000_QL80_.jpg", },
             NombreSala = "Sala Pequeña 2",
+            Inicio = DateTime.Today.AddHours(20).AddMinutes(30),
+            TarifaBase = 10.00m,
+            Formato = "2D"
+        },
+        new Sesion
+        {
+            Id = 2,
+            Pelicula = new Pelicula { Id = 3, Titulo = "Klaus", DuracionMin = 96, Genero = "Comedia", EdadMinima = 3, ImagenUrl = "https://ih1.redbubble.net/image.2357228583.8271/flat,750x,075,f-pad,750x1000,f8f8f8.jpg", },
+            NombreSala = "Sala Pequeña 3",
             Inicio = DateTime.Today.AddHours(20).AddMinutes(30),
             TarifaBase = 10.00m,
             Formato = "2D"
@@ -189,9 +192,7 @@
                 {
                     Fila = fila,
                     Numero = num,
-                    // Fila A tiene plazas de movilidad reducida en los extremos
                     Tipo = (fila == 'A' && (num == 1 || num == 5)) ? TipoAsiento.Minusvalido : TipoAsiento.Estandar,
-                    // Simulamos que el asiento B3 ya está vendido
                     Estado = (fila == 'B' && num == 3) ? EstadoAsiento.Vendido : EstadoAsiento.Libre
                 });
             }
@@ -214,9 +215,9 @@
 
     private string ObtenerColorAsiento(AsientoSesion asiento) => asiento.Estado switch
     {
-        EstadoAsiento.Libre => "#c8e6c9",      // Verde claro
-        EstadoAsiento.Bloqueado => "#fff59d",  // Amarillo
-        EstadoAsiento.Vendido => "#ffcdd2",    // Rojo claro
+        EstadoAsiento.Libre => "#69f0ae",      // Verde brillante
+        EstadoAsiento.Bloqueado => "#40c4ff",  // Azul cian (para destacar sobre el fondo amarillo)
+        EstadoAsiento.Vendido => "#ff5252",    // Rojo coral
         _ => "white"
     };
 
