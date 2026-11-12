@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CineFrontend", "src\fronten
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CinEsi", "src\backend\CinEsi.csproj", "{0D0DBFF2-98A8-4609-8F17-038E0CDB32ED}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CineTests", "src\tests\CineTests.csproj", "{229584D1-2981-4436-B0D2-D98877EFC65E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -26,9 +28,14 @@ Global
 		{0D0DBFF2-98A8-4609-8F17-038E0CDB32ED}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0D0DBFF2-98A8-4609-8F17-038E0CDB32ED}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0D0DBFF2-98A8-4609-8F17-038E0CDB32ED}.Release|Any CPU.Build.0 = Release|Any CPU
+		{229584D1-2981-4436-B0D2-D98877EFC65E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{229584D1-2981-4436-B0D2-D98877EFC65E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{229584D1-2981-4436-B0D2-D98877EFC65E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{229584D1-2981-4436-B0D2-D98877EFC65E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{0413D534-F8C9-48C0-8DCB-D004605689B5} = {5146064D-5E36-403F-9D6C-EBB211146E41}
 		{0D0DBFF2-98A8-4609-8F17-038E0CDB32ED} = {5146064D-5E36-403F-9D6C-EBB211146E41}
+		{229584D1-2981-4436-B0D2-D98877EFC65E} = {5146064D-5E36-403F-9D6C-EBB211146E41}
 	EndGlobalSection
 EndGlobal
