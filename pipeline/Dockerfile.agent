@@ -3,6 +3,7 @@ FROM gocd/gocd-agent-docker-dind:v26.1.0
 USER root
 
 ARG GRADLE_VERSION=8.10.2
+ARG DOTNET_VERSION=8.0
 
 # JDK completo (la imagen solo trae un JRE para GoCD)
 RUN if command -v apk >/dev/null 2>&1; then \
@@ -18,5 +19,11 @@ RUN curl -fsSL "https://services.gradle.org/distributions/gradle-${GRADLE_VERSIO
  && unzip -q /tmp/gradle.zip -d /opt \
  && ln -s "/opt/gradle-${GRADLE_VERSION}/bin/gradle" /usr/local/bin/gradle \
  && rm /tmp/gradle.zip
+
+# SDK .NET compatible con el proyecto net8.0
+RUN curl -fsSL "https://dot.net/v1/dotnet-install.sh" -o /tmp/dotnet-install.sh \
+ && bash /tmp/dotnet-install.sh --channel "${DOTNET_VERSION}" --install-dir /opt/dotnet \
+ && ln -s /opt/dotnet/dotnet /usr/local/bin/dotnet \
+ && rm /tmp/dotnet-install.sh
 
 USER go

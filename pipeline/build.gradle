@@ -2,19 +2,50 @@ plugins {
     id 'base'
 }
 
+def repoRoot = projectDir.parentFile
+
 tasks.register('restore', Exec) {
+    workingDir repoRoot
     commandLine 'dotnet', 'restore'
 }
 
 tasks.register('compile', Exec) {
     dependsOn 'restore'
-    // Compila toda la solución (aplicación + proyectos de test xUnit)
+    workingDir repoRoot
     commandLine 'dotnet', 'build', '--configuration', 'Release', '--no-restore'
 }
 
 tasks.register('runTests', Exec) {
-    // --no-build obliga a usar los binarios que ya vienen en el artefacto
-    commandLine 'dotnet', 'test', '--configuration', 'Release', '--no-build', '--logger', 'trx;LogFileName=test-results.trx'
+    dependsOn 'compile'
+    workingDir repoRoot
+    doFirst {
+        file("$projectDir/test-results/test").mkdirs()
+    }
+    commandLine 'dotnet', 'test',
+            '--configuration', 'Release',
+            '--no-build',
+            '--logger', "junit;LogFilePath=$projectDir/test-results/test/test-results.xml"
+}
+
+tasks.register('test') {
+    dependsOn 'runTests'
+}
+
+tasks.register('packageBuild', Tar) {
+    dependsOn 'compile'
+    archiveFileName = 'build-artifacts.tar.gz'
+    destinationDirectory = projectDir
+    compression = Compression.GZIP
+    from(repoRoot) {
+        exclude 'pipeline/build'
+        exclude 'pipeline/.gradle'
+        exclude 'pipeline/test-results'
+        exclude 'pipeline/build-artifacts.tar.gz'
+        exclude '**/bin'
+        exclude '**/obj'
+        exclude '**/TestResults'
+        exclude '.git'
+    }
 }
 
 tasks.named('build') {
