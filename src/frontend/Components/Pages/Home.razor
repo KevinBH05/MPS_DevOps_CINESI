@@ -2,6 +2,8 @@
 @rendermode InteractiveServer
 @using CineSi
 
+@inject CineService CineService
+
 <PageTitle>CinESI - Cartelera</PageTitle>
 
 <div class="fondo-cine">
@@ -163,7 +165,7 @@
         { 3, "https://ih1.redbubble.net/image.2357228583.8271/flat,750x,075,f-pad,750x1000,f8f8f8.jpg" }
     };
 
-    private List<Sesion> sesionesDisponibles = new();
+    private IReadOnlyList<Sesion> sesionesDisponibles = Array.Empty<Sesion>();
     private Sesion? sesionSeleccionada;
     private List<EntradaBorrador> entradasSeleccionadas = new();
     private List<Ticket>? ticketsEmitidos;
@@ -172,25 +174,7 @@
     // Se ejecuta al cargar la página: creamos las salas y sesiones usando las Factories del backend
     protected override void OnInitialized()
     {
-        ISalaFactory salaGrande = new SalaGrandeFactory();
-        ISalaFactory salaPequena = new SalaPequenaFactory();
-
-        var peli1 = new Pelicula(1, "Avengers: Doomsday", 165, "Ciencia Ficción", 12);
-        var peli2 = new Pelicula(2, "Pesadilla antes de Navidad", 76, "Fantasía", 3);
-        var peli3 = new Pelicula(3, "Klaus", 96, "Comedia", 3);
-
-        var sesion1 = new Sesion(1, DateTime.Today.AddHours(18), salaGrande.CrearSala(), peli1);
-        var sesion2 = new Sesion(2, DateTime.Today.AddHours(20).AddMinutes(30), salaPequena.CrearSala(), peli2);
-        var sesion3 = new Sesion(3, DateTime.Today.AddHours(22), salaPequena.CrearSala(), peli3);
-
-        // Simulamos un par de asientos ya vendidos en la sesión 1 para probar
-        var b3 = sesion1.Sala.ObtenerAsiento('B', 3);
-        sesion1.BloquearAsientos(new[] { b3 }, clienteId: 99);
-        var compraPrevia = new Compra(99, sesion1);
-        compraPrevia.AgregarEntrada(sesion1.ObtenerAsientoSesion(b3), new SinDescuento());
-        compraPrevia.Confirmar();
-
-        sesionesDisponibles = new() { sesion1, sesion2, sesion3 };
+        sesionesDisponibles = CineService.Sesiones;
     }
 
     private void SeleccionarSesion(Sesion sesion)
