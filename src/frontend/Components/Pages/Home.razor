@@ -1,6 +1,6 @@
 ﻿@page "/"
 @rendermode InteractiveServer
-@using CineFrontend.Models
+@using CineSi
 
 <PageTitle>CinESI - Cartelera</PageTitle>
 
@@ -14,19 +14,21 @@
             @foreach (var sesion in sesionesDisponibles)
             {
                 var esSeleccionada = sesionSeleccionada?.Id == sesion.Id;
+                var posterUrl = postersPorPeliculaId.GetValueOrDefault(sesion.Pelicula.Id, "");
+
                 <div class="tarjeta-sesion @(esSeleccionada ? "seleccionada" : "")">
-                    @if (!string.IsNullOrEmpty(sesion.Pelicula.ImagenUrl))
+                    @if (!string.IsNullOrEmpty(posterUrl))
                     {
-                        <img src="@sesion.Pelicula.ImagenUrl" alt="@sesion.Pelicula.Titulo" class="poster-pelicula" />
+                        <img src="@posterUrl" alt="@sesion.Pelicula.Titulo" class="poster-pelicula" />
                     }
                     <h3>@sesion.Pelicula.Titulo</h3>
                     <p class="meta-pelicula">
                         🎭 @sesion.Pelicula.Genero | ⏱️ @sesion.Pelicula.DuracionMin min | 🔞 +@sesion.Pelicula.EdadMinima
                     </p>
                     <hr style="border: 0; border-top: 1px solid rgba(244, 255, 0, 0.25);" />
-                    <p>🏛️ <strong>@sesion.NombreSala</strong> (@sesion.Formato)</p>
-                    <p>🕒 Hora: <strong>@sesion.Inicio.ToString("HH:mm")</strong></p>
-                    <p>💶 Tarifa base: <strong>@sesion.TarifaBase €</strong></p>
+                    <p>🏛️ <strong>Sala @sesion.Sala.Id</strong> (@sesion.Sala.Capacidad() butacas)</p>
+                    <p>🕒 Hora: <strong>@sesion.Inicio.ToString("HH:mm") - @sesion.Fin().ToString("HH:mm")</strong></p>
+                    <p>💶 Tarifa base: <strong>@Entrada.PrecioBase.ToString("0.00") €</strong></p>
                     
                     <button class="boton-elegir" @onclick="() => SeleccionarSesion(sesion)">
                         Seleccionar Sesión
@@ -36,7 +38,7 @@
         </div>
 
         <!-- 2. MAPA DE BUTACAS Y DESCUENTOS -->
-        @if (sesionSeleccionada != null && !compraConfirmada)
+        @if (sesionSeleccionada != null && ticketsEmitidos == null)
         {
             <div class="panel-neon">
                 <h2>Butacas para @sesionSeleccionada.Pelicula.Titulo (@sesionSeleccionada.Inicio.ToString("HH:mm"))</h2>
@@ -50,19 +52,22 @@
 
                 <div class="pantalla-cine">PANTALLA</div>
 
-                <div style="display: flex; flex-direction: column; gap: 10px; align-items: center; margin-bottom: 25px;">
-                    @foreach (var fila in mapaAsientos.GroupBy(a => a.Fila))
+                <!-- Cuadrícula real de la Sala (Grande 10x20 o Pequeña 5x10) -->
+                <div style="display: flex; flex-direction: column; gap: 6px; align-items: center; margin-bottom: 25px; overflow-x: auto;">
+                    @foreach (var fila in sesionSeleccionada.ObtenerMapa().GroupBy(a => a.Asiento.Fila))
                     {
-                        <div style="display: flex; gap: 8px; align-items: center;">
+                        <div style="display: flex; gap: 4px; align-items: center;">
                             <strong style="width: 20px;">@fila.Key</strong>
-                            @foreach (var asiento in fila)
+                            @foreach (var asientoSesion in fila)
                             {
-                                <button @onclick="() => AlternarAsiento(asiento)"
-                                        disabled="@(asiento.Estado == EstadoAsiento.Vendido)"
-                                        style="width: 54px; height: 42px; border-radius: 6px; border: 2px solid #2b0f4c; font-weight: bold;
-                                               cursor: @(asiento.Estado == EstadoAsiento.Vendido ? "not-allowed" : "pointer");
-                                               background-color: @ObtenerColorAsiento(asiento); color: #1a0633;">
-                                    @asiento.Etiqueta @(asiento.Tipo == TipoAsiento.Minusvalido ? "♿" : "")
+                                var estaSeleccionada = entradasSeleccionadas.Any(e => e.AsientoSesion == asientoSesion);
+                                <button @onclick="() => AlternarAsiento(asientoSesion)"
+                                        disabled="@(asientoSesion.Estado == EstadoAsiento.Vendido)"
+                                        title="@asientoSesion.Asiento.Etiqueta() (@asientoSesion.Asiento.Tipo)"
+                                        style="min-width: 38px; height: 32px; padding: 0 3px; font-size: 0.75em; border-radius: 5px; border: 1.5px solid #2b0f4c; font-weight: bold;
+                                               cursor: @(asientoSesion.Estado == EstadoAsiento.Vendido ? "not-allowed" : "pointer");
+                                               background-color: @ObtenerColorAsiento(asientoSesion, estaSeleccionada); color: #1a0633;">
+                                    @asientoSesion.Asiento.Etiqueta()@(asientoSesion.Asiento.EsMinusvalido() ? "♿" : "")
                                 </button>
                             }
                         </div>
@@ -77,19 +82,19 @@
                         {
                             <li class="item-entrada">
                                 <span>
-                                    🎟️ Butaca <strong>@item.Asiento.Etiqueta</strong> 
-                                    (@(item.Asiento.Tipo == TipoAsiento.Minusvalido ? "Movilidad Reducida" : "Estándar"))
+                                    🎟️ Butaca <strong>@item.AsientoSesion.Asiento.Etiqueta()</strong> 
+                                    (@(item.AsientoSesion.Asiento.EsMinusvalido() ? "Movilidad Reducida" : "Estándar"))
                                 </span>
                                 
                                 <div>
                                     <label>Tarifa: </label>
-                                    <select @bind="item.Descuento" style="padding: 5px; border-radius: 4px; background-color: #160926; color: #f4ff00; border: 1px solid #f4ff00;">
-                                        <option value="@TipoDescuento.SinDescuento">Normal (0% dto.)</option>
-                                        <option value="@TipoDescuento.DescuentoEstudiante">Estudiante (-20%)</option>
-                                        <option value="@TipoDescuento.DescuentoSenior">Senior (-30%)</option>
-                                        <option value="@TipoDescuento.DescuentoDiaEspectador">Día del Espectador (-25%)</option>
+                                    <select @bind="item.TipoDescuento" style="padding: 5px; border-radius: 4px; background-color: #160926; color: #f4ff00; border: 1px solid #f4ff00;">
+                                        <option value="Normal">Normal (0% dto.)</option>
+                                        <option value="Estudiante">Estudiante (-25%)</option>
+                                        <option value="Senior">Senior (-40%)</option>
+                                        <option value="Espectador">Día del Espectador (-50%)</option>
                                     </select>
-                                    <strong style="margin-left: 15px;">@CalcularPrecioEntrada(item).ToString("0.00") €</strong>
+                                    <strong style="margin-left: 15px;">@CrearEstrategia(item.TipoDescuento).Calcular(Entrada.PrecioBase).ToString("0.00") €</strong>
                                 </div>
                             </li>
                         }
@@ -101,6 +106,11 @@
                         Total a pagar: <strong>@CalcularTotalCompra().ToString("0.00") €</strong>
                     </p>
 
+                    @if (!string.IsNullOrEmpty(mensajeError))
+                    {
+                        <p style="color: #ff5252; font-weight: bold; text-align: right;">⚠️ @mensajeError</p>
+                    }
+
                     <div style="text-align: right;">
                         <button class="boton-confirmar" @onclick="ConfirmarCompra">
                             Confirmar Compra (@entradasSeleccionadas.Count entradas)
@@ -110,15 +120,25 @@
             </div>
         }
 
-        <!-- 3. TICKET DE CONFIRMACIÓN -->
-        @if (compraConfirmada && sesionSeleccionada != null)
+        <!-- 3. TICKETS REALES EMITIDOS POR EL BACKEND -->
+        @if (ticketsEmitidos != null && sesionSeleccionada != null)
         {
             <div class="panel-neon">
-                <h2>✅ ¡Compra confirmada! Tus tickets están listos</h2>
-                <p><strong>Película:</strong> @sesionSeleccionada.Pelicula.Titulo (@sesionSeleccionada.Formato)</p>
-                <p><strong>Sala y Hora:</strong> @sesionSeleccionada.NombreSala - @sesionSeleccionada.Inicio.ToString("HH:mm")</p>
-                <p><strong>Butacas:</strong> @string.Join(", ", entradasSeleccionadas.Select(e => e.Asiento.Etiqueta))</p>
-                <p style="font-size: 1.2em;"><strong>Total pagado:</strong> @CalcularTotalCompra().ToString("0.00") €</p>
+                <h2>✅ ¡Compra confirmada! Tus tickets oficiales:</h2>
+                <ul style="list-style: none; padding: 0;">
+                    @foreach (var t in ticketsEmitidos)
+                    {
+                        <li class="item-entrada">
+                            <span>
+                                🎫 <strong>Ticket #@t.Codigo</strong> — @t.Pelicula() | Sala @t.Sala() | @t.Hora().ToString("dd/MM HH:mm") | Butaca <strong>@t.Asiento()</strong>
+                            </span>
+                            <strong>@t.PrecioPagado.ToString("0.00") €</strong>
+                        </li>
+                    }
+                </ul>
+                <p style="font-size: 1.2em; text-align: right;">
+                    <strong>Total pagado:</strong> @ticketsEmitidos.Sum(t => t.PrecioPagado).ToString("0.00") €
+                </p>
 
                 <button class="boton-confirmar" @onclick="Reiniciar" style="margin-top: 10px;">
                     Volver a la cartelera
@@ -131,119 +151,122 @@
 @code {
     private class EntradaBorrador
     {
-        public AsientoSesion Asiento { get; set; } = new();
-        public TipoDescuento Descuento { get; set; } = TipoDescuento.SinDescuento;
+        public AsientoSesion AsientoSesion { get; set; } = default!;
+        public string TipoDescuento { get; set; } = "Normal";
     }
 
-    private List<Sesion> sesionesDisponibles = new()
+    // Diccionario para asociar tus imágenes a los IDs de las películas del backend
+    private Dictionary<int, string> postersPorPeliculaId = new()
     {
-        new Sesion
-        {
-            Id = 1,
-            Pelicula = new Pelicula { Id = 1, Titulo = "Avengers: Doomsday", DuracionMin = 165, Genero = "Ciencia Ficción", EdadMinima = 12, ImagenUrl = "https://lumiere-a.akamaihd.net/v1/images/captura_de_pantalla_2026-07-20_a_la_s_5_65bfa234.png?region=0,0,1144,1628" , },
-            NombreSala = "Sala Grande 1",
-            Inicio = DateTime.Today.AddHours(18),
-            TarifaBase = 10.00m,
-            Formato = "IMAX 3D"
-        },
-        new Sesion
-        {
-            Id = 2,
-            Pelicula = new Pelicula { Id = 2, Titulo = "Pesadilla antes de Navidad", DuracionMin = 76, Genero = "Fantasía", EdadMinima = 3, ImagenUrl = "https://m.media-amazon.com/images/I/61FdpB2M6PL._AC_UF894,1000_QL80_.jpg", },
-            NombreSala = "Sala Pequeña 2",
-            Inicio = DateTime.Today.AddHours(20).AddMinutes(30),
-            TarifaBase = 10.00m,
-            Formato = "2D"
-        },
-        new Sesion
-        {
-            Id = 2,
-            Pelicula = new Pelicula { Id = 3, Titulo = "Klaus", DuracionMin = 96, Genero = "Comedia", EdadMinima = 3, ImagenUrl = "https://ih1.redbubble.net/image.2357228583.8271/flat,750x,075,f-pad,750x1000,f8f8f8.jpg", },
-            NombreSala = "Sala Pequeña 3",
-            Inicio = DateTime.Today.AddHours(20).AddMinutes(30),
-            TarifaBase = 10.00m,
-            Formato = "2D"
-        }
+        { 1, "https://lumiere-a.akamaihd.net/v1/images/captura_de_pantalla_2026-07-20_a_la_s_5_65bfa234.png?region=0,0,1144,1628" },
+        { 2, "https://m.media-amazon.com/images/I/61FdpB2M6PL._AC_UF894,1000_QL80_.jpg" },
+        { 3, "https://ih1.redbubble.net/image.2357228583.8271/flat,750x,075,f-pad,750x1000,f8f8f8.jpg" }
     };
 
+    private List<Sesion> sesionesDisponibles = new();
     private Sesion? sesionSeleccionada;
-    private List<AsientoSesion> mapaAsientos = new();
     private List<EntradaBorrador> entradasSeleccionadas = new();
-    private bool compraConfirmada = false;
+    private List<Ticket>? ticketsEmitidos;
+    private string? mensajeError;
+
+    // Se ejecuta al cargar la página: creamos las salas y sesiones usando las Factories del backend
+    protected override void OnInitialized()
+    {
+        ISalaFactory salaGrande = new SalaGrandeFactory();
+        ISalaFactory salaPequena = new SalaPequenaFactory();
+
+        var peli1 = new Pelicula(1, "Avengers: Doomsday", 165, "Ciencia Ficción", 12);
+        var peli2 = new Pelicula(2, "Pesadilla antes de Navidad", 76, "Fantasía", 3);
+        var peli3 = new Pelicula(3, "Klaus", 96, "Comedia", 3);
+
+        var sesion1 = new Sesion(1, DateTime.Today.AddHours(18), salaGrande.CrearSala(), peli1);
+        var sesion2 = new Sesion(2, DateTime.Today.AddHours(20).AddMinutes(30), salaPequena.CrearSala(), peli2);
+        var sesion3 = new Sesion(3, DateTime.Today.AddHours(22), salaPequena.CrearSala(), peli3);
+
+        // Simulamos un par de asientos ya vendidos en la sesión 1 para probar
+        var b3 = sesion1.Sala.ObtenerAsiento('B', 3);
+        sesion1.BloquearAsientos(new[] { b3 }, clienteId: 99);
+        var compraPrevia = new Compra(99, sesion1);
+        compraPrevia.AgregarEntrada(sesion1.ObtenerAsientoSesion(b3), new SinDescuento());
+        compraPrevia.Confirmar();
+
+        sesionesDisponibles = new() { sesion1, sesion2, sesion3 };
+    }
 
     private void SeleccionarSesion(Sesion sesion)
     {
         sesionSeleccionada = sesion;
-        compraConfirmada = false;
+        ticketsEmitidos = null;
+        mensajeError = null;
         entradasSeleccionadas.Clear();
-        GenerarMapaSimulado();
     }
 
-    private void GenerarMapaSimulado()
+    private void AlternarAsiento(AsientoSesion asientoSesion)
     {
-        mapaAsientos.Clear();
-        char[] filas = { 'A', 'B', 'C' };
+        if (asientoSesion.Estado == EstadoAsiento.Vendido) return;
 
-        foreach (var fila in filas)
+        var existente = entradasSeleccionadas.FirstOrDefault(e => e.AsientoSesion == asientoSesion);
+        if (existente != null)
         {
-            for (int num = 1; num <= 5; num++)
-            {
-                mapaAsientos.Add(new AsientoSesion
-                {
-                    Fila = fila,
-                    Numero = num,
-                    Tipo = (fila == 'A' && (num == 1 || num == 5)) ? TipoAsiento.Minusvalido : TipoAsiento.Estandar,
-                    Estado = (fila == 'B' && num == 3) ? EstadoAsiento.Vendido : EstadoAsiento.Libre
-                });
-            }
+            entradasSeleccionadas.Remove(existente);
+        }
+        else if (asientoSesion.Estado == EstadoAsiento.Libre)
+        {
+            entradasSeleccionadas.Add(new EntradaBorrador { AsientoSesion = asientoSesion });
         }
     }
 
-    private void AlternarAsiento(AsientoSesion asiento)
+    private string ObtenerColorAsiento(AsientoSesion asientoSesion, bool estaSeleccionada)
     {
-        if (asiento.Estado == EstadoAsiento.Libre)
+        if (estaSeleccionada) return "#40c4ff"; // Azul cian (seleccionada por ti)
+        return asientoSesion.Estado switch
         {
-            asiento.Estado = EstadoAsiento.Bloqueado;
-            entradasSeleccionadas.Add(new EntradaBorrador { Asiento = asiento });
-        }
-        else if (asiento.Estado == EstadoAsiento.Bloqueado)
-        {
-            asiento.Estado = EstadoAsiento.Libre;
-            entradasSeleccionadas.RemoveAll(e => e.Asiento.Etiqueta == asiento.Etiqueta);
-        }
-    }
-
-    private string ObtenerColorAsiento(AsientoSesion asiento) => asiento.Estado switch
-    {
-        EstadoAsiento.Libre => "#69f0ae",      // Verde brillante
-        EstadoAsiento.Bloqueado => "#40c4ff",  // Azul cian (para destacar sobre el fondo amarillo)
-        EstadoAsiento.Vendido => "#ff5252",    // Rojo coral
-        _ => "white"
-    };
-
-    private decimal CalcularPrecioEntrada(EntradaBorrador entrada)
-    {
-        decimal basePrice = sesionSeleccionada?.TarifaBase ?? 10.00m;
-        return entrada.Descuento switch
-        {
-            TipoDescuento.DescuentoEstudiante => basePrice * 0.80m,
-            TipoDescuento.DescuentoSenior => basePrice * 0.70m,
-            TipoDescuento.DescuentoDiaEspectador => basePrice * 0.75m,
-            _ => basePrice
+            EstadoAsiento.Libre => "#69f0ae",      // Verde brillante
+            EstadoAsiento.Bloqueado => "#ffd740",  // Ámbar (bloqueado por otro)
+            EstadoAsiento.Vendido => "#ff5252",    // Rojo coral
+            _ => "white"
         };
     }
 
-    private decimal CalcularTotalCompra() => entradasSeleccionadas.Sum(CalcularPrecioEntrada);
+    private IDescuentoStrategy CrearEstrategia(string tipo) => tipo switch
+    {
+        "Estudiante" => new DescuentoEstudiante(),
+        "Senior" => new DescuentoSenior(),
+        "Espectador" => new DescuentoDiaEspectador(),
+        _ => new SinDescuento()
+    };
+
+    private decimal CalcularTotalCompra() =>
+        entradasSeleccionadas.Sum(e => CrearEstrategia(e.TipoDescuento).Calcular(Entrada.PrecioBase));
 
     private void ConfirmarCompra()
     {
-        if (entradasSeleccionadas.Any())
+        if (sesionSeleccionada == null || !entradasSeleccionadas.Any()) return;
+
+        try
         {
-            foreach (var entrada in entradasSeleccionadas)
+            mensajeError = null;
+            int clienteId = 1;
+
+            // 1. Bloqueamos los asientos en la sesión real
+            var asientosFisicos = entradasSeleccionadas.Select(e => e.AsientoSesion.Asiento);
+            sesionSeleccionada.BloquearAsientos(asientosFisicos, clienteId);
+
+            // 2. Creamos la Compra real y agregamos cada entrada con su Strategy
+            var compra = new Compra(clienteId, sesionSeleccionada);
+            foreach (var item in entradasSeleccionadas)
             {
-                entrada.Asiento.Estado = EstadoAsiento.Vendido;
+                var estrategia = CrearEstrategia(item.TipoDescuento);
+                compra.AgregarEntrada(item.AsientoSesion, estrategia);
             }
-            compraConfirmada = true;
+
+            // 3. Confirmamos y emitimos los tickets oficiales
+            compra.Confirmar();
+            ticketsEmitidos = compra.EmitirTickets().ToList();
+        }
+        catch (Exception ex)
+        {
+            mensajeError = ex.Message;
         }
     }
 
@@ -251,6 +274,7 @@
     {
         sesionSeleccionada = null;
         entradasSeleccionadas.Clear();
-        compraConfirmada = false;
+        ticketsEmitidos = null;
+        mensajeError = null;
     }
 }
